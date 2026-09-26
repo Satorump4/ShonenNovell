@@ -1,0 +1,210 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: 'Literata Variable', Georgia, 'Times New Roman', serif;
+
+  --color-page: #0e0e0f;
+  --color-panel: #1c1c1e;
+  --color-raised: #242427;
+  --color-hover: #2a2a2e;
+  --color-line: #2c2c30;
+  --color-fg: #e8e8ea;
+  --color-muted: #a2a2a8;
+  --color-faint: #6e6e76;
+  --color-accent: #2f7cf6;
+  --color-accent-hover: #4a8ef8;
+  --color-date: #7e8ba4;
+  --color-danger: #e5484d;
+  --color-success: #3fb950;
+  --color-star: #f5a524;
+}
+
+@layer base {
+  html {
+    background: var(--color-page);
+    color: var(--color-fg);
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background: var(--color-page);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  button,
+  [role='button'] {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: default;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: rgb(47 124 246 / 0.35);
+  }
+  input[type='range'] {
+    accent-color: var(--color-accent);
+  }
+}
+
+/* ---------- Текст книги (ридер и редактор используют одни стили) ---------- */
+
+.book-text {
+  font-size: var(--reader-size, 19px);
+  line-height: var(--reader-lh, 1.8);
+  color: #e6e4e0;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+.book-text p {
+  margin: 0 0 1em;
+}
+.book-text h1,
+.book-text h2,
+.book-text h3 {
+  font-weight: 600;
+  line-height: 1.3;
+  color: #f2f1ee;
+}
+.book-text h1 {
+  font-size: 1.6em;
+  margin: 1.6em 0 0.8em;
+}
+.book-text h2 {
+  font-size: 1.35em;
+  margin: 1.5em 0 0.7em;
+}
+.book-text h3 {
+  font-size: 1.15em;
+  margin: 1.4em 0 0.6em;
+}
+.book-text blockquote {
+  margin: 1.4em 0;
+  padding: 0.1em 0 0.1em 1.1em;
+  border-left: 2px solid rgb(255 255 255 / 0.2);
+  color: #c9c7c2;
+}
+.book-text ul,
+.book-text ol {
+  margin: 0 0 1em;
+  padding-left: 1.5em;
+}
+.book-text ul {
+  list-style: disc;
+}
+.book-text ol {
+  list-style: decimal;
+}
+.book-text li > p {
+  margin-bottom: 0.35em;
+}
+.book-text hr {
+  border: 0;
+  height: 1px;
+  width: 6rem;
+  margin: 2.4em auto;
+  background: rgb(255 255 255 / 0.22);
+}
+.book-text img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.6em auto;
+  border-radius: 6px;
+}
+.book-text a {
+  color: #7fb0ff;
+  text-decoration: underline;
+  text-decoration-color: rgb(127 176 255 / 0.4);
+  text-underline-offset: 3px;
+}
+.book-text strong {
+  font-weight: 650;
+  color: #f4f3f0;
+}
+.book-text mark.find-hit {
+  background: rgb(47 124 246 / 0.3);
+  color: inherit;
+  border-radius: 2px;
+}
+
+/* ---------- Атмосфера: плавная смена фона ---------- */
+
+@keyframes bg-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.bg-layer {
+  position: absolute;
+  inset: 0;
+  animation: bg-in var(--dur, 1500ms) ease-in-out both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.fade-in {
+  animation: fade-in 180ms ease-out both;
+}
+
+/* Системная настройка «уменьшить движение»: убираем переходы интерфейса.
+   Смена фона остаётся плавной, но её длительность сокращает сам ридер. */
+@media (prefers-reduced-motion: reduce) {
+  *:not(.bg-layer),
+  *:not(.bg-layer)::before,
+  *:not(.bg-layer)::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- Редактор Tiptap в админке ---------- */
+
+.editor .ProseMirror {
+  outline: none;
+  min-height: 12rem;
+}
+.editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--color-faint);
+}
+.editor .ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid var(--color-accent);
+}
+.editor .ProseMirror hr.ProseMirror-selectednode {
+  background: var(--color-accent);
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a40 transparent;
+}
+
+/* Абзац, найденный поиском, ненадолго подсвечивается. */
+.book-text .find-hit-block {
+  background: rgb(47 124 246 / 0.14);
+  border-radius: 4px;
+  box-shadow: 0 0 0 6px rgb(47 124 246 / 0.14);
+  transition: background 1s, box-shadow 1s;
+}

@@ -1,0 +1,135 @@
+// Схема базы атмосферного ридера.
+// Текст хранится в сценах как Tiptap JSON (проверенный и очищенный на backend).
+// Бинарные файлы в БД не лежат — только метаданные и URL из хранилища (диск или S3).
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Книга на сайте одна, поэтому это «одиночная» запись с id = 1.
+model Book {
+  id                Int      @id @default(1)
+  title             String
+  originalTitle     String?
+  author            String   @default("")
+  description       String   @default("")
+  /// Строки информационной карточки: [{ "label": "Тип", "value": "Роман" }, ...]
+  info              Json     @default("[]")
+  coverId           String?
+  cover             Media?   @relation("BookCover", fields: [coverId], references: [id], onDelete: SetNull)
+  faviconId         String?
+  favicon           Media?   @relation("BookFavicon", fields: [faviconId], references: [id], onDelete: SetNull)
+  /// Фон ридера, пока сцена не задала свой.
+  defaultBackground String   @default("#101012")
+  updatedAt         DateTime @updatedAt
+}
+
+model Chapter {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  /// Номер тома (необязательно) и номер главы как строка: "7", "12.5".
+  volume      Int?
+  number      String
+  /// Порядок в оглавлении.
+  order       Int
+  published   Boolean   @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  /// Текст главы — это последовательность сцен.
+  scenes      Scene[]
+
+  @@index([published, order])
+}
+
+enum MusicMode {
+  /// Продолжать то, что играло до этой сцены.
+  INHERIT
+  /// Включить свой трек.
+  TRACK
+  /// Плавно заглушить музыку.
+  SILENCE
+}
+
+model Scene {
+  id                String    @id @default(cuid())
+  chapterId         String
+  chapter           Chapter   @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  /// Название видно только в админке.
+  title             String    @default("")
+  order             Int
+  /// Tiptap JSON (type: "doc").
+  content           Json
+  /// Плоский текст для поиска и выгрузки, пересчитывается при сохранении.
+  plainText         String    @default("")
+  musicMode         MusicMode @default(INHERIT)
+  musicId           String?
+  music             Media?    @relation("SceneMusic", fields: [musicId], references: [id], onDelete: SetNull)
+  /// Громкость трека сцены, 0..1.
+  volume            Float     @default(0.7)
+  /// CSS-цвет или градиент. null — унаследовать фон предыдущей сцены.
+  background        String?
+  backgroundImageId String?
+  backgroundImage   Media?    @relation("SceneBackground", fields: [backgroundImageId], references: [id], onDelete: SetNull)
+  /// Затемнение поверх фонового изображения ради читаемости, 0..0.9.
+  backgroundDim     Float     @default(0.5)
+  /// Длительность плавного перехода фона и музыки, мс.
+  transitionMs      Int       @default(1500)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([chapterId, order])
+}
+
+enum MediaType {
+  IMAGE
+  AUDIO
+}
+
+model Media {
+  id               String    @id @default(cuid())
+  /// Исходное имя файла (для отображения).
+  filename         String
+  /// Ключ в хранилище (имя файла на диске / объект в S3).
+  storageKey       String    @unique
+  url              String
+  type             MediaType
+  mimeType         String
+  size             Int
+  width            Int?
+  height           Int?
+  createdAt        DateTime  @default(now())
+
+  sceneMusic       Scene[]   @relation("SceneMusic")
+  sceneBackgrounds Scene[]   @relation("SceneBackground")
+  bookCovers       Book[]    @relation("BookCover")
+  bookFavicons     Book[]    @relation("BookFavicon")
+
+  @@index([type, createdAt])
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  /// Увеличивается при смене пароля — старые сессии становятся недействительными.
+  tokenVersion Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+/// Анонимная оценка книги читателем (без регистрации: clientId хранится в браузере).
+model Rating {
+  id        String   @id @default(cuid())
+  clientId  String   @unique
+  value     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

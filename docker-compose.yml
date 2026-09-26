@@ -1,0 +1,40 @@
+# Локальная разработка.
+#   docker compose up -d db              — только PostgreSQL (приложение: npm run dev)
+#   docker compose --profile full up     — PostgreSQL + собранное приложение, как на Railway
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: book
+      POSTGRES_PASSWORD: book
+      POSTGRES_DB: book
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U book -d book']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  app:
+    profiles: ['full']
+    build: .
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://book:book@db:5432/book
+      STORAGE_DIR: /data/uploads
+    ports:
+      - '3000:3000'
+    volumes:
+      - uploads:/data
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  uploads:
